@@ -1,13 +1,16 @@
 using Awbful.Editors;
+using System;
 using System.Diagnostics;
 using System.Windows.Forms;
 using System.Xml;
+using System.Xml.Linq;
 
 namespace Awbful
 {
     public partial class MainWindow : Form
     {
         CriUtf cueNode, synthNode, sequenceNode, trackNode, waveformNode;
+        XmlElement awbNode, waveformElement, synthElement, trackEventElement, trackElement;
         CommandTable trackEventNode;
         XmlDocument xmlDoc;
 
@@ -53,11 +56,15 @@ namespace Awbful
                     XmlNode? cueTable = tableNode.SelectSingleNode("rows/row/CRIUTF[@name='Cue']");
                     cueNode = AddNewTab(cueTable, "Cue");
 
+                    awbNode = (XmlElement)tableNode.SelectSingleNode("rows/row/AWB[@subkey='0']");
+
                     XmlNode? synthTable = tableNode.SelectSingleNode("rows/row/CRIUTF[@name='Synth']");
                     synthNode = AddNewTab(synthTable, "Synth");
+                    synthElement = (XmlElement)synthTable;
 
                     XmlNode? trackTable = tableNode.SelectSingleNode("rows/row/CRIUTF[@name='Track']");
-                    if(trackTable != null)
+                    trackElement = (XmlElement)trackTable;
+                    if (trackTable != null)
                         trackNode = AddNewTab(trackTable, "Track");
 
                     XmlNode? sequenceTable = tableNode.SelectSingleNode("rows/row/CRIUTF[@name='Sequence']");
@@ -66,8 +73,10 @@ namespace Awbful
 
                     XmlNode? waveformTable = tableNode.SelectSingleNode("rows/row/CRIUTF[@name='Waveform']");
                     waveformNode = AddNewTab(waveformTable, "Waveform");
+                    waveformElement = (XmlElement)waveformTable;
 
                     XmlNode? trackEventTable = tableNode.SelectSingleNode("rows/row/CRIUTF[@name='TrackEvent']");
+                    trackEventElement = (XmlElement)trackEventTable;
                     if (trackTable != null)
                         trackEventNode = AddCommandTab(trackEventTable, "TrackEvent");
                 }
@@ -197,6 +206,146 @@ namespace Awbful
         private void saveXMLToolStripMenuItem_Click(object sender, EventArgs e)
         {
             saveFileDialog1.ShowDialog();
+        }
+
+
+        private void createWaveformsFromFolderToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            DialogResult result = openHcaFolder.ShowDialog();
+
+            if (result == DialogResult.OK)
+            {
+                string folderPath = openHcaFolder.SelectedPath;
+                // 1. Read all .hca files from the folder
+                string[] audioFiles = Directory.GetFiles(folderPath, "*.hca");
+
+                // Get the <files> node from the AWB element
+                XmlNode filesNode = awbNode.GetElementsByTagName("files")[0];
+                // Clear the existing <file> entries
+                filesNode.RemoveAll();
+
+                // Get the <order> node from the AWB element
+                XmlNode orderNode = awbNode.GetElementsByTagName("order")[0];
+                orderNode.RemoveAll();
+
+                // Get the <rows> node from the CRIUTF node
+                XmlNode rowsNode = waveformElement.GetElementsByTagName("rows")[0];
+                XmlNodeList rowNodes = rowsNode.ChildNodes;
+
+                XmlNode synthRows = synthElement.GetElementsByTagName("rows")[0];
+                XmlNodeList synthRowNodes = synthRows.ChildNodes;
+
+                XmlNode trackEventRows = trackEventElement.GetElementsByTagName("rows")[0];
+                XmlNodeList trackEventRowNodes = trackEventRows.ChildNodes;
+
+                XmlNode trackRows = trackElement.GetElementsByTagName("rows")[0];
+                XmlNodeList trackRowNodes = trackRows.ChildNodes;
+
+                // Keep track of the number of files
+                int fileCount = audioFiles.Length;
+                int rowCount = rowNodes.Count;
+                int synthCount = synthRowNodes.Count;
+                int trackEventRowCount = trackEventRowNodes.Count;
+                int trackRowCount = trackRowNodes.Count;
+
+                // Add new <file> entries to the <files> node
+                for (int i = 0; i < fileCount; i++)
+                {
+                    XmlElement fileElement = awbNode.OwnerDocument.CreateElement("file");
+                    fileElement.SetAttribute("seq", i.ToString());
+                    fileElement.SetAttribute("path", audioFiles[i]);
+                    filesNode.AppendChild(fileElement);
+
+                    // If there are more files than rows, duplicate the last row
+                    if (i >= rowCount)
+                    {
+                        // Copy the last row (duplicating)
+                        XmlNode lastRow = rowNodes[rowCount - 1];
+                        XmlNode newRow = lastRow.CloneNode(true);
+
+                        // Update the MemoryAwbId for the new row
+                        XmlNode memoryAwbIdNode = newRow.SelectSingleNode("record[@name='MemoryAwbId']");
+                        if (memoryAwbIdNode != null)
+                        {
+                            memoryAwbIdNode.Attributes["value"].Value = (i).ToString();
+                        }
+
+                        // Append the new row to the <rows> node
+                        rowsNode.AppendChild(newRow);
+                    }
+                    if (i >= synthCount)
+                    {
+                        // Copy the last row (duplicating)
+                        XmlNode lastRow = synthRowNodes[synthCount - 1];
+                        XmlNode newRow = lastRow.CloneNode(true);
+
+                        // Update the MemoryAwbId for the new row
+                        XmlNode referenceItemNode = newRow.SelectSingleNode("record[@name='ReferenceItems']");
+                        if (referenceItemNode != null)
+                        {
+                            string newReferenceItemValue = "0001" + i.ToString("x4"); // Ensure 4 lowercase hexadecimal digits
+                            referenceItemNode.Attributes["value"].Value = newReferenceItemValue;
+                        }
+
+                        // Append the new row to the <rows> node
+                        synthRows.AppendChild(newRow);
+                    }
+                    if (i >= trackRowCount)
+                    {
+                        // Copy the last row (duplicating)
+                        XmlNode lastRow = trackRowNodes[trackRowCount - 1];
+                        XmlNode newRow = lastRow.CloneNode(true);
+
+                        // Update the MemoryAwbId for the new row
+                        XmlNode eventIndexNode = newRow.SelectSingleNode("record[@name='EventIndex']");
+                        if (eventIndexNode != null)
+                        {
+                            eventIndexNode.Attributes["value"].Value = (i).ToString();
+                        }
+
+                        // Append the new row to the <rows> node
+                        trackRows.AppendChild(newRow);
+                    }
+                    if (i >= trackEventRowCount)
+                    {
+                        // Copy the last row (duplicating)
+                        XmlNode lastRow = trackEventRowNodes[trackEventRowCount - 1];
+                        XmlNode newRow = lastRow.CloneNode(true);
+
+                        XmlNode opNode = newRow.SelectSingleNode("ACBCMD/op[@opcode='2000']");
+
+                        if (opNode != null)
+                        {
+                            // Calculate the new value: type << 16 | index
+                            int type = 2;
+                            int newValue = (type << 16) | i;
+
+                            // Set the "value" attribute to the calculated new value
+                            opNode.Attributes["value"].Value = newValue.ToString();
+                        }
+                        else
+                        {
+                            Console.WriteLine("No <op> element with opcode='2000' found.");
+                        }
+
+                        // Append the new row to the <rows> node
+                        trackEventRows.AppendChild(newRow);
+                    }
+                }
+
+                // Update the order nodes to match the file sequence
+                for (int i = 0; i < fileCount; i++)
+                {
+                    XmlElement orderElement = awbNode.OwnerDocument.CreateElement("entry");
+                    orderElement.SetAttribute("id", i.ToString());
+                    orderNode.AppendChild(orderElement);
+                }
+
+                waveformNode.LoadTable(waveformElement);
+                synthNode.LoadTable(synthElement);
+                trackEventNode.LoadTable(trackEventElement);
+                trackNode.LoadTable(trackElement);
+            }
         }
     }
 }

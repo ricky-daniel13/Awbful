@@ -36,13 +36,15 @@
             tabHolder = new TabControl();
             openFileDialog1 = new OpenFileDialog();
             saveFileDialog1 = new SaveFileDialog();
+            createWaveformsFromFolderToolStripMenuItem = new ToolStripMenuItem();
+            openHcaFolder = new FolderBrowserDialog();
             menuStrip1.SuspendLayout();
             panel1.SuspendLayout();
             SuspendLayout();
             // 
             // menuStrip1
             // 
-            menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem });
+            menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, createWaveformsFromFolderToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
             menuStrip1.Size = new Size(802, 24);
@@ -59,14 +61,14 @@
             // openFile
             // 
             openFile.Name = "openFile";
-            openFile.Size = new Size(130, 22);
+            openFile.Size = new Size(180, 22);
             openFile.Text = "Open XML";
             openFile.Click += OpenFile_Click;
             // 
             // saveXMLToolStripMenuItem
             // 
             saveXMLToolStripMenuItem.Name = "saveXMLToolStripMenuItem";
-            saveXMLToolStripMenuItem.Size = new Size(130, 22);
+            saveXMLToolStripMenuItem.Size = new Size(180, 22);
             saveXMLToolStripMenuItem.Text = "Save XML";
             saveXMLToolStripMenuItem.Click += saveXMLToolStripMenuItem_Click;
             // 
@@ -103,6 +105,18 @@
             saveFileDialog1.Title = "Save XML";
             saveFileDialog1.FileOk += saveFileDialog1_FileOk;
             // 
+            // createWaveformsFromFolderToolStripMenuItem
+            // 
+            createWaveformsFromFolderToolStripMenuItem.Name = "createWaveformsFromFolderToolStripMenuItem";
+            createWaveformsFromFolderToolStripMenuItem.Size = new Size(181, 20);
+            createWaveformsFromFolderToolStripMenuItem.Text = "Create Waveforms from Folder";
+            createWaveformsFromFolderToolStripMenuItem.Click += createWaveformsFromFolderToolStripMenuItem_Click;
+            // 
+            // openHcaFolder
+            // 
+            openHcaFolder.AddToRecent = false;
+            openHcaFolder.Description = "Path with your Hca files";
+            // 
             // MainWindow
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
@@ -130,5 +144,7 @@
         private TabControl tabHolder;
         private SaveFileDialog saveFileDialog1;
         private ToolStripMenuItem saveXMLToolStripMenuItem;
+        private ToolStripMenuItem createWaveformsFromFolderToolStripMenuItem;
+        private FolderBrowserDialog openHcaFolder;
     }
 }
